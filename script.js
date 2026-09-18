@@ -1,4 +1,6 @@
-const STORAGE_KEY = "directorio-companeros";
+const SUPABASE_URL = "https://rdpybjqsbvzjngpjtjfc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_m4ci86uTcl-rJ48EI2kt0w_GiIDYvPx";
+const TABLE_NAME = "companeros";
 
 const form = document.querySelector("#contact-form");
 const nameInput = document.querySelector("#name");
@@ -15,29 +17,37 @@ const clearAllButton = document.querySelector("#clear-all");
 const cancelEditButton = document.querySelector("#cancel-edit");
 const submitLabel = document.querySelector("#submit-label");
 
-let contacts = loadContacts();
+let contacts = [];
 let editingContactId = null;
 
-function loadContacts() {
+async function supabaseRequest(path = "", options = {}) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE_NAME}${path}`, {
+    ...options,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      ...options.headers
+    }
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.message || body.details || `Error ${response.status}`);
+  }
+  return response.status === 204 ? null : response.json();
+}
+
+async function loadContacts() {
   try {
-    const savedContacts = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return Array.isArray(savedContacts) ? savedContacts : [];
+    contacts = await supabaseRequest("?select=id,nombre,correo,creado_en&order=creado_en.desc");
+    renderContacts();
   } catch (error) {
-    return [];
+    showError(`No se pudo cargar el listado: ${error.message}`);
   }
 }
 
-function saveContacts() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(contacts));
-}
-
 function getInitials(name) {
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0].toUpperCase())
-    .join("");
+  return name.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join("");
 }
 
 function escapeHtml(value) {
@@ -46,138 +56,118 @@ function escapeHtml(value) {
   return element.innerHTML;
 }
 
+function showError(message) {
+  feedback.textContent = message;
+  feedback.classList.add("error");
+}
+
 function renderContacts() {
   const searchTerm = searchInput.value.trim().toLowerCase();
-  const visibleContacts = contacts.filter((contact) =>
-    `${contact.name} ${contact.email}`.toLowerCase().includes(searchTerm)
-  );
-
+  const visibleContacts = contacts.filter((contact) => `${contact.nombre} ${contact.correo}`.toLowerCase().includes(searchTerm));
   contactList.innerHTML = visibleContacts.map((contact) => `
     <tr>
-      <td>
-        <div class="person-cell">
-          <span class="avatar">${escapeHtml(getInitials(contact.name))}</span>
-          <span>${escapeHtml(contact.name)}</span>
-        </div>
-      </td>
-      <td class="email-cell">${escapeHtml(contact.email)}</td>
-      <td>
-        <div class="row-actions">
-          <button class="edit-button" type="button" data-id="${contact.id}">Editar</button>
-          <button class="delete-button" type="button" data-id="${contact.id}" aria-label="Eliminar a ${escapeHtml(contact.name)}" title="Eliminar">×</button>
-        </div>
-      </td>
+      <td><div class="person-cell"><span class="avatar">${escapeHtml(getInitials(contact.nombre))}</span><span>${escapeHtml(contact.nombre)}</span></div></td>
+      <td class="email-cell">${escapeHtml(contact.correo)}</td>
+      <td><div class="row-actions"><button class="edit-button" type="button" data-id="${contact.id}">Editar</button><button class="delete-button" type="button" data-id="${contact.id}" aria-label="Eliminar a ${escapeHtml(contact.nombre)}" title="Eliminar">×</button></div></td>
     </tr>
   `).join("");
 
   const hasContacts = contacts.length > 0;
-  const hasResults = visibleContacts.length > 0;
   contactCount.textContent = contacts.length;
-  listDescription.textContent = hasContacts
-    ? `${contacts.length === 1 ? "Una persona" : `${contacts.length} personas`} en tu directorio.`
-    : "Tu lista aparecerá aquí.";
+  listDescription.textContent = hasContacts ? `${contacts.length === 1 ? "Una persona" : `${contacts.length} personas`} en tu directorio.` : "Tu lista aparecerá aquí.";
   clearAllButton.hidden = !hasContacts;
-  emptyState.classList.toggle("visible", !hasResults);
-
-  if (hasContacts && !hasResults) {
-    emptyState.querySelector("h3").textContent = "Sin resultados";
-    emptyState.querySelector("p").textContent = "Prueba con otro nombre o correo.";
-  } else {
-    emptyState.querySelector("h3").textContent = "Aún no hay compañeros";
-    emptyState.querySelector("p").textContent = "Usa el formulario para crear tu primer registro.";
-  }
+  emptyState.classList.toggle("visible", visibleContacts.length === 0);
+  emptyState.querySelector("h3").textContent = hasContacts && visibleContacts.length === 0 ? "Sin resultados" : "Aún no hay compañeros";
+  emptyState.querySelector("p").textContent = hasContacts && visibleContacts.length === 0 ? "Prueba con otro nombre o correo." : "Usa el formulario para crear tu primer registro.";
 }
 
 function validateForm() {
-  const name = nameInput.value.trim();
-  const email = emailInput.value.trim().toLowerCase();
-  let isValid = true;
+  const nombre = nameInput.value.trim();
+  const correo = emailInput.value.trim().toLowerCase();
   nameError.textContent = "";
   emailError.textContent = "";
   nameInput.classList.remove("invalid");
   emailInput.classList.remove("invalid");
-
-  if (name.length < 2) {
+  let isValid = true;
+  if (nombre.length < 2) {
     nameError.textContent = "Escribe al menos 2 caracteres.";
     nameInput.classList.add("invalid");
     isValid = false;
   }
-
-  if (!emailInput.validity.valid || !email) {
+  if (!emailInput.validity.valid || !correo) {
     emailError.textContent = "Escribe un correo válido.";
     emailInput.classList.add("invalid");
     isValid = false;
-  } else if (contacts.some((contact) => contact.email === email && contact.id !== editingContactId)) {
+  } else if (contacts.some((contact) => contact.correo.toLowerCase() === correo && contact.id !== editingContactId)) {
     emailError.textContent = "Ese correo ya está registrado.";
     emailInput.classList.add("invalid");
     isValid = false;
   }
-
-  return { isValid, name, email };
+  return { isValid, nombre, correo };
 }
 
-form.addEventListener("submit", (event) => {
+form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const result = validateForm();
   feedback.textContent = "";
   feedback.classList.remove("error");
-
   if (!result.isValid) {
-    feedback.textContent = "Revisa los campos marcados.";
-    feedback.classList.add("error");
+    showError("Revisa los campos marcados.");
     return;
   }
-
-  if (editingContactId) {
-    contacts = contacts.map((contact) => contact.id === editingContactId
-      ? { ...contact, name: result.name, email: result.email }
-      : contact);
-    editingContactId = null;
-    submitLabel.textContent = "Agregar compañero";
-    cancelEditButton.hidden = true;
-    feedback.textContent = "Compañero actualizado correctamente.";
-  } else {
-    contacts.unshift({ id: crypto.randomUUID(), name: result.name, email: result.email });
-    feedback.textContent = "Compañero agregado correctamente.";
+  try {
+    if (editingContactId) {
+      await supabaseRequest(`?id=eq.${encodeURIComponent(editingContactId)}`, {
+        method: "PATCH",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ nombre: result.nombre, correo: result.correo })
+      });
+      feedback.textContent = "Compañero actualizado correctamente.";
+    } else {
+      await supabaseRequest("", {
+        method: "POST",
+        headers: { Prefer: "return=representation" },
+        body: JSON.stringify({ nombre: result.nombre, correo: result.correo })
+      });
+      feedback.textContent = "Compañero agregado correctamente.";
+    }
+    cancelEdit();
+    await loadContacts();
+  } catch (error) {
+    showError(`No se pudo guardar: ${error.message}`);
   }
-  saveContacts();
-  renderContacts();
-  form.reset();
-  nameInput.focus();
 });
 
-[nameInput, emailInput].forEach((input) => {
-  input.addEventListener("input", () => {
-    input.classList.remove("invalid");
-    if (input === nameInput) nameError.textContent = "";
-    if (input === emailInput) emailError.textContent = "";
-  });
-});
+[nameInput, emailInput].forEach((input) => input.addEventListener("input", () => {
+  input.classList.remove("invalid");
+  if (input === nameInput) nameError.textContent = "";
+  if (input === emailInput) emailError.textContent = "";
+}));
 
 searchInput.addEventListener("input", renderContacts);
 
-contactList.addEventListener("click", (event) => {
+contactList.addEventListener("click", async (event) => {
   const editButton = event.target.closest(".edit-button");
   const deleteButton = event.target.closest(".delete-button");
   if (editButton) {
     const contact = contacts.find((item) => item.id === editButton.dataset.id);
     if (!contact) return;
     editingContactId = contact.id;
-    nameInput.value = contact.name;
-    emailInput.value = contact.email;
+    nameInput.value = contact.nombre;
+    emailInput.value = contact.correo;
     submitLabel.textContent = "Guardar cambios";
     cancelEditButton.hidden = false;
     feedback.textContent = "Editando registro seleccionado.";
-    feedback.classList.remove("error");
     nameInput.focus();
     return;
   }
-  if (!deleteButton) return;
-
-  contacts = contacts.filter((contact) => contact.id !== deleteButton.dataset.id);
-  if (editingContactId === deleteButton.dataset.id) cancelEdit();
-  saveContacts();
-  renderContacts();
+  if (!deleteButton || !window.confirm("¿Eliminar este compañero?")) return;
+  try {
+    await supabaseRequest(`?id=eq.${encodeURIComponent(deleteButton.dataset.id)}`, { method: "DELETE" });
+    await loadContacts();
+  } catch (error) {
+    showError(`No se pudo eliminar: ${error.message}`);
+  }
 });
 
 function cancelEdit() {
@@ -185,17 +175,18 @@ function cancelEdit() {
   form.reset();
   submitLabel.textContent = "Agregar compañero";
   cancelEditButton.hidden = true;
-  feedback.textContent = "Edición cancelada.";
-  feedback.classList.remove("error");
 }
 
 cancelEditButton.addEventListener("click", cancelEdit);
 
-clearAllButton.addEventListener("click", () => {
+clearAllButton.addEventListener("click", async () => {
   if (!window.confirm("¿Quieres eliminar todos los compañeros registrados?")) return;
-  contacts = [];
-  saveContacts();
-  renderContacts();
+  try {
+    await supabaseRequest("?id=not.is.null", { method: "DELETE" });
+    await loadContacts();
+  } catch (error) {
+    showError(`No se pudo vaciar la lista: ${error.message}`);
+  }
 });
 
-renderContacts();
+loadContacts();
