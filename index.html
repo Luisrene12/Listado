@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Listado de compañeros y correos electrónicos">
+  <title>Directorio de compañeros</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="index.html" aria-label="Inicio del directorio">
+        <span class="brand-mark" aria-hidden="true">◎</span>
+        <span>Mi directorio</span>
+      </a>
+      <span class="status-pill"><span class="status-dot"></span>Guardado local</span>
+    </header>
+
+    <main class="content">
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow">CONTACTOS DEL EQUIPO</p>
+          <h1 id="page-title">Listado</h1>
+          <p class="intro-copy">Registra nombres y correos en un solo lugar. La información se guarda automáticamente en este navegador.</p>
+        </div>
+        <div class="intro-shape" aria-hidden="true">
+          <span class="shape-ring ring-one"></span>
+          <span class="shape-ring ring-two"></span>
+          <span class="shape-star">✦</span>
+        </div>
+      </section>
+
+      <section class="workspace" aria-label="Gestión de compañeros">
+        <div class="form-panel">
+          <div class="section-heading">
+            <span class="step-number">01</span>
+            <div>
+              <h2>Nuevo compañero</h2>
+              <p>Agrega sus datos para tenerlos disponibles.</p>
+            </div>
+          </div>
+
+          <form id="contact-form" novalidate>
+            <div class="field-group">
+              <label for="name">Nombre completo</label>
+              <input type="text" id="name" name="name" placeholder="Ej. Valeria Gómez" autocomplete="name" maxlength="80" required>
+              <span class="field-error" id="name-error" aria-live="polite"></span>
+            </div>
+            <div class="field-group">
+              <label for="email">Correo electrónico</label>
+              <input type="email" id="email" name="email" placeholder="valeria@empresa.com" autocomplete="email" maxlength="120" required>
+              <span class="field-error" id="email-error" aria-live="polite"></span>
+            </div>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">
+              <span id="submit-label">Agregar compañero</span>
+              <span class="button-arrow" aria-hidden="true">↗</span>
+              </button>
+              <button class="cancel-button" id="cancel-edit" type="button" hidden>Cancelar edición</button>
+            </div>
+            <p class="form-feedback" id="form-feedback" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+
+        <div class="list-panel">
+          <div class="list-header">
+            <div class="section-heading">
+              <span class="step-number">02</span>
+              <div>
+                <h2>Compañeros registrados</h2>
+                <p id="list-description">Tu lista aparecerá aquí.</p>
+              </div>
+            </div>
+            <div class="total-count"><span id="contact-count">0</span><small>contactos</small></div>
+          </div>
+
+          <div class="toolbar">
+            <label class="search-box" for="search-input">
+              <span aria-hidden="true">⌕</span>
+              <input type="search" id="search-input" placeholder="Buscar por nombre o correo..." autocomplete="off">
+            </label>
+            <button class="clear-button" id="clear-all" type="button" hidden>Vaciar lista</button>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Compañero</th>
+                  <th scope="col">Correo electrónico</th>
+                  <th scope="col"><span class="sr-only">Acciones</span></th>
+                </tr>
+              </thead>
+              <tbody id="contact-list"></tbody>
+            </table>
+            <div class="empty-state" id="empty-state">
+              <div class="empty-icon" aria-hidden="true">＋</div>
+              <h3>Aún no hay compañeros</h3>
+              <p>Usa el formulario para crear tu primer registro.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">Directorio personal <span>·</span> Tus datos permanecen en este dispositivo</footer>
+  </div>
+</body>
+</html>
